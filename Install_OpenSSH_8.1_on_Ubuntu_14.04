@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# [PT] Instalando dependencias
+# [EN] Installing deps
+
+sudo apt-get install libssl-dev zlib1g-dev libpam0g-dev xz-utils
+sudo apt-get remove openssh-server
+
+# [PT] Baixando e extraindo recursos
+# [EN] Downloading and extracting sources
+
+wget https://fastly.cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-8.1p1.tar.gz
+wget http://lfs.koddos.net/patches/downloads/openssh/openssh-8.1p1-glibc_2.31_fix-1.patch
+tar -xf openssh-8.1p1.tar.gz
+cd openssh-8.1p1
+
+# [PT] Aplicando Patch
+# [EN] Applying patch
+
+echo "Applying patch and running configure and make..."
+patch -Np1 -i ../openssh-8.1p1-glibc_2.31_fix-1.patch &&
+
+# [PT] Rodando configuração e compilando
+# [EN] Running configure and build
+
+./configure --prefix=/usr                     \
+            --sysconfdir=/etc/ssh             \
+            --with-md5-passwords              \
+            --with-privsep-path=/var/lib/sshd              \
+            --with-pam &&
+make
+
+# [PT] Instalando...
+# [EN] Installing...
+
+make install &&
+install -v -m755    contrib/ssh-copy-id /usr/bin     &&
+
+install -v -m644    contrib/ssh-copy-id.1 \
+                    /usr/share/man/man1              &&
+install -v -m755 -d /usr/share/doc/openssh-8.1p1     &&
+install -v -m644    INSTALL LICENCE OVERVIEW README* \
+                    /usr/share/doc/openssh-8.1p1
+
+# [PT] Baixando e linkando o script inicial...
+# [EN] Downloading and symlinking init script...
+
+cd ../
+wget http://anduin.linuxfromscratch.org/BLFS/blfs-bootscripts/blfs-bootscripts-20180105.tar.xz
+tar -xf blfs-bootscripts-20180105.tar.xz
+cd blfs-bootscripts-20180105
+
+make install-sshd
+ln -s /etc/rc.d/init.d/sshd /etc/init.d/sshd
+
+# [PT] Reiniciando serviço SSHD
+# [EN] Restarting sshd service
+
+sudo service sshd restart
+
+# [PT] Testando OpenSSH
+# [EN] Testing OpenSSH
+
+ssh -V
+telnet localhost 22
+
+echo "DONE!"
